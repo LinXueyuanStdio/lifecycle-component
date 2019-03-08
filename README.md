@@ -1,62 +1,5 @@
 # 用生命周期规范组件化流程
 
-目录
-=================
-* [写在前面](#写在前面)
-* [1. 组件创建](#1-组件创建)
-   * [从原有代码中拆分出的新组件](#从原有代码中拆分出的新组件)
-   * [为新功能创建新组件](#为新功能创建新组件)
-      * [新功能的确定](#新功能的确定)
-      * [新组件架构的确定](#新组件架构的确定)
-      * [新组件架构的创建傻瓜化](#新组件架构的创建傻瓜化)
-* [2. 组件开发](#2-组件开发)
-   * [组件调试时独立](#组件调试时独立)
-   * [多组件调试](#多组件调试)
-   * [组件开发](#组件开发)
-   * [组件耦合](#组件耦合)
-      * [组件间数据传递](#组件间数据传递)
-      * [组件间函数调用](#组件间函数调用)
-      * [组件间界面跳转](#组件间界面跳转)
-            * [构建标准的路由请求](#构建标准的路由请求)
-            * [处理路由请求](#处理路由请求)
-            * [ARouter 搞不定的情况](#arouter-搞不定的情况)
-      * [组件间 UI 混合](#组件间-ui-混合)
-* [3. 组件维护](#3-组件维护)
-   * [组件混淆](#组件混淆)
-   * [体积优化](#体积优化)
-      * [assets 优化](#assets-优化)
-      * [res 优化](#res-优化)
-      * [lib目录优化](#lib目录优化)
-      * [清除无用的资源文件](#清除无用的资源文件)
-      * [清除未使用的替代资源](#清除未使用的替代资源)
-      * [整理代码](#整理代码)
-   * [编译加速（gradle 优化）](#编译加速gradle-优化)
-   * [依赖控制](#依赖控制)
-   * [发布 aar](#发布-aar)
-   * [常见错误：already present](#常见错误already-present)
-* [4. 组件发布](#4-组件发布)
-* [5. 组件移除](#5-组件移除)
-* [6. 组件划分](#6-组件划分)
-   * [架构](#架构)
-      * [宿主壳、调试壳](#宿主壳调试壳)
-      * [组件层](#组件层)
-      * [基础层](#基础层)
-      * [MVC、MVP、MVVM 如何下沉](#mvcmvpmvvm-如何下沉)
-   * [Utils 规范：使用 Kotlin](#utils-规范使用-kotlin)
-      * [静态方法](#静态方法)
-      * [单例模式](#单例模式)
-   * [res 规范：命名清晰](#res-规范命名清晰)
-      * [string.xml](#stringxml)
-   * [asset](#asset)
-   * [特殊组件](#特殊组件)
-      * [CommonResource](#commonresource)
-      * [CommonData](#commondata)
-      * [CommonBase](#commonbase)
-      * [CommonSDK](#commonsdk)
-* [写在后面](#写在后面)
-   * [展望：组件共享](#展望组件共享)
-   * [尾声](#尾声)
-
 ## 写在前面
 
 [demo 有空会在 github 上更新，欢迎关注](https://github.com/LinXueyuanStdio/lifecycle-component)。
@@ -101,7 +44,414 @@
 
 面向生命周期的组件设计，需要明确组件创建，组件开发，组件发布，组件移除，组件划分，组件维护的一整套操作规范。下面将就这套体系一一详细分析原因和给出解决方案。
 
-## 1. 组件创建
+
+## 1. 组件划分
+
+组件化和模块化相比，组件化更加细粒度，但是一定要把握组件划分的度，不能太细，也不能太粗。
+
+划分太细会导致组件过多，维护困难（当然，人手多的话，实行`维护者组件责任制`可以完美解决，所以我们优先选择细粒度划分）
+
+划分太粗会导致编译过慢，组件化形如虚设。
+
+### 架构
+
+分三层：宿主壳和调试壳，组件层，基础层。各层间依赖关系：
+- 宿主壳、调试壳以 runtimeOnly 依赖所有组件，不得依赖基础层。
+- 组件层间不得相互依赖。组件层按需依赖基础层的各种库。所有组件对基础层的依赖都是按需依赖，必要时可以不依赖基础层。
+- 基础层间不得相互依赖。基础层的 module 对于第三方依赖，最多可以使用 api 长依赖于第三方，不要用 implementation 的短依赖。（当然，自己写的 module 以及一些特殊组件甚至可以什么都不依赖）
+
+时光猫部分架构如图：
+
+![](model.png)
+
+各层包含的内容如下。
+
+#### 宿主壳、调试壳
+
+不能有一点儿 java 代码，仅在 `build.gradle` 里添加对各个组件的依赖，`AndroidManifest.xml`里声明权限，入口，变量，汇总 Activity。
+
+宿主壳和调试壳本质是一样的，宿主壳等价于同时调试所有组件的调试壳。
+
+#### 组件层
+
+每个组件都应该是可独立运行的。这意味着组件内可以声明新的数据结构和创建对应的数据表和数据库。
+
+没有必要把 model 下沉到基础层。如果需要共用同一个 model，那要么划分组件就不合理，要么通过 ARouter 从别的组件获取 fragment 的方式解决。
+
+如果实在要把 model 下沉到基础层，方便组件共享数据模型，那么必须新建一个库放在基础层（命名为 CommonData）不允许放 CommonSDK 里，因为要保证基础层的库都服从单一职责。
+
+#### 基础层
+
+尽量不要下沉代码到基础层！
+尽量不要下沉代码到基础层！
+尽量不要下沉代码到基础层！
+
+基础层的设定就是为了让组件放心地依赖基础层，放心地复用基础层的代码，以达到高效开发的目的。
+所以，不要让基础层成为你的代码垃圾桶。对基础层的要求有两个，对内和对外。
+对外，命名要秒懂。这样在写组件的业务代码的时候，多想一下基础层里的代码，复用比造轮子更重要。
+对内，要分类清晰。不要让某个基础层的库里堆积了大量`xxUtils.java`这种垃圾代码。不是说不写，而是说少写，以及分类清晰地写。推荐[AndroidUtilCode](https://github.com/Blankj/AndroidUtilCode)，同时可以学习一下`Util`是怎么分类的。其次，下沉到基础层的代码，其他组件不一定想用，所以在下沉代码之前，先经过 code review。
+
+基础层包括自己的 CommonSDK、自己的 CommonBase、CommonResource、第三方 SDK，第三方 UI，第三方代码级库。
+1. `CommonSDK` 含
+   - 你的 Utils
+   - Events实体
+
+2. `CommonBase` 含
+   - 你的自写 widget
+   - BaseActivity, BaseFragment等
+   - base_layout
+   - res：base_style.xml
+3. `CommonData` 这是基础层特殊库，含
+   - 共享数据库
+   - ARouter路由表
+4. `CommonResource`含
+   - 资源
+5. `第三方 SDK` 指 `科大讯飞 SDK`、`腾讯 bugly SDK`、`Bmob SDK` 等解决方案专业化、需要注册申请才能使用的 SDK。
+   这部分的依赖放在基础层。注意：
+   1. 要根据组件配置动态依赖，减少编译时间。因为不是所有组件都全部用到了所有的 SDK，真实情况是组件用到的只是部分 SDK。
+   2. 对每个第三方 SDK 必须新建一个 module 来包含住这个 SDK。组件按需依赖。
+6. `第三方代码级库` 指`ButterKnife`、`Dagger`、`ARouter`、`Glide`、`rxjava`、`ArmsMVP`等注解、生成代码、定义了一种代码风格的库。
+   这部分的依赖放在 CommonSDK。这意味着每个组件都会依赖所有的 `第三方代码级库`。具体有哪些代码级库在下面列出：
+   - `ButterKnife`：绑定view
+   - `Dagger`：对象注入
+   - `ARouter`：跨组件路由框架
+   - `Glide`：图片加载框架
+   - `rxjava`、`rxAndroid`：异步
+   - `ArmsMVP`：上面的库都在这里集成，且这个库还定义了一套 MVP 规范，有模板支持一键生成 ArmsMVP 风格的 MVP，不用手动创建各个文件了。
+7. `第三方 UI` 指 `SmartRefreshLayout`、`QMUI`、`Android-skin-support` 等 UI widget 库。
+   这部分的依赖放在自己的 CommonBase。
+   对比较大的库，优先考虑放在组件内依赖，在下沉到 CommonBase 前要三思，不要让其他组件被动附加不必要的编译时间。
+8. `其他第三方 library`, 按库大小优先考虑放在组件内依赖，尽量不要下沉到基础层。
+
+#### MVC、MVP、MVVM 如何下沉
+
+均最多只能下沉 `M` 到基础层。`MVC` 里的 `V` 和 `C`、`MVP` 里的 `V` 和 `P`、`MVVM`里的 `V` 和 `VM` 均只能放组件层。
+
+为什么？
+
+`M` 是数据层，如果为了组件间共享数据不择手段，那就下沉 `M`。
+注意，不建议所有的 M 都下沉到基础层。有两个原因：
+
+1. M 随便下沉会导致基础层臃肿，其他组件被迫编译，被迫增加时间成本
+2. M 放组件内部更容易维护
+
+`V`、`C`、`P`、`VM` 都是业务，业务应该留在组件内。
+
+时刻记住，只有足够优秀的代码才能下沉到基础层。
+
+### Utils 规范：使用 Kotlin
+
+> 为什么是 Kotlin？因为 Kotlin 方便扩展某一类 util（使用扩展函数）。
+
+强制：必须注释！！！
+
+建议：放在基础层的 CommonSDK 里。（也可以独立成为一个 module，但建议放在 CommonSDK）
+
+#### 静态方法
+
+原来：
+
+```java
+//声明
+final class Utils {
+    public static boolean foo() {
+        return false;
+    }
+}
+//使用
+final boolean test = Utils.foo();
+```
+转化后：
+
+```Kotlin
+//定义
+object Utils {
+    @JvmStatic
+    fun foo(): Boolean = true
+}
+// Kotlin 里使用
+val test = Utils.foo()
+// Java 里使用
+final boolean test = Utils.foo()
+```
+
+#### 单例模式
+
+请使用懒汉式，因为 Utils 在使用时再初始化，防止在没有用到的时候影响性能。
+
+1. 饿汉式
+
+Kotlin 引入了 object 类型，可以很容易声明单例模式。
+
+对象声明就是单例了。`object DataProviderManager`就可以理解为创建了类`DataProviderManager`并且实现了单例模式。
+
+```
+object Singleton {
+    ...
+}
+
+// Kotlin 中调用
+Singleton.xx()
+
+// Java 中调用
+Singleton.INSTANCE.xx()
+```
+这种方式和 Java 单例模式的饿汉式一样，不过比 Java 中的实现代码量少很多，其实是个语法糖。反编译生成的 class 文件后如下：
+```
+public final class Singleton {
+    public static final Singleton INSTANCE = null;
+
+    static {
+        Singleton singleton = new Singleton();
+    }
+
+    private Singleton() {
+        INSTANCE = this;
+    }
+}
+```
+
+2. 懒汉式
+
+前面的 object 的实现方式是饿汉式的，开始使用前就实例化好了，如何在第一次调用时在初始化呢？Kotlin 中的延迟属性 Lazy 刚好适合这种场景。
+```
+// kotlin 声明
+class Singleton private constructor() {
+    companion object {
+        val instance: Singleton by lazy { Singleton() }
+    }
+}
+
+// Kotlin 中调用
+Singleton.instance.xx()
+
+// Java 中调用
+Singleton.Companion.getInstance().xx()
+```
+
+### res 规范：命名清晰
+
+全部：
+  - 使用插件 [Android File Grouping Plugin](https://github.com/dmytrodanylyk/folding-plugin)
+    它可以在不改变文件目录结构的情况下，将文件按名称进行分组。
+    - 分组规则，按名称中的下划线”_”作为分隔符，将下划线前面的做作为一组
+    - 分组不会移动文件
+    - 分组也不会实际创建目录
+  -
+组件内的 res：
+  - resourcePrefix "组件名_" //给 Module 内的资源名增加前缀, 避免资源名冲突
+  -
+基础层内的 res：
+  - resourcePrefix "base_" //组件也想用`base_`的话，可以用`组件名_base_`
+
+下面对组件范围内的 res 进行规范
+
+#### string.xml
+
+string分类
+
+- 标记型`string_short.xml`：如`comfirm`，`cancel`，`ok`，`delete`，`app_name`等短小精悍的string
+- 长篇大论帮助文档型`string_long.xml`：如 faq
+- 格式化型`string_format.xml`：如`全国排名第 %d 名`
+- 字符串数组`array_string.xml`
+- 区分单复数的数量字符串Quantity Strings (Plurals)
+- 魔法字符串`string_important.xml`：如[这哥们把女神名字当base signal](https://github.com/ywwynm/EverythingDone/blob/master/app/src/main/res/values/strings.xml#L6)，混进用户编辑的文字里存数据库了，不能翻译，不要乱动。动就是两开花。
+
+注意：
+0. 项目不大，建议先别翻译
+1. 展示给用户的才翻译，其余不要翻译
+2. 组件中的 string 资源下沉到基础层，如果暂时不想分类放好，可以新建个`string_<组件名>.xml`。但是不推荐这么做，因为迟早要变垃圾桶。
+
+以上欢迎补充。
+
+### asset
+
+那个组件用到就放哪个组件的 `asset/<组件名>` 文件夹里避免冲突，不要集中下沉到基础层（除非是基础层自己的 asset）。
+
+apk 编译时会自动 merge。
+
+
+### 特殊组件
+
+由规范 5（只依赖部分组件）和规范 6（组件隔离、代码隔离）知，不能随便把代码下沉到基础层。
+
+但是组件间的共享是硬需求，每次下沉前都要考虑一番不符合敏捷开发的原则。
+
+有没有一个解决方案，可以不用带脑子就直接下沉，实现共享呢？
+
+一个简单易操作的方法是定义特殊组件，只要符合特殊组件要求的，就可以直接下沉。
+
+#### CommonResource
+
+CommonResource 包含且仅包含以下类型的资源
+
+- `drawable-xxx`, `mipmap-xxx`
+- `color`
+- `anim`
+- `integer`, `bool`
+- `raw`, `asset`：打包时不会压缩这里的文件，也不会校验是否完整，也就是说会 100% 打包进 APK 里。
+- `string`
+
+注意：
+
+- 上面其实只有一句话：除了`attr.xml`即`<declare-styleable.../>`外所有资源。
+  因为`<declare-styleable.../>`是与widget和style绑定的，所以在定义widget的组件里放`<declare-styleable.../>`，在CommonResource里放style级的`<declare-styleable.../>`。
+- 在矢量图里使用了主题颜色的，考虑好style要一起随之下沉。例如下面的 `android:fillColor="?icon_color"` 其中`?icon_color`是在主题里定义的。
+  这里需要带点脑子...
+  可能会抛错`Drawable com.time.cat:drawable/ic_notes has unresolved theme attributes! Consider using Resources.getDrawable(int, Theme) or Context.getDrawable(int).`
+  解决：`https://stackoverflow.com/questions/9469174/set-theme-for-a-fragment`最后发现是[Android-skin-support](https://github.com/ximsfei/Android-skin-support)这个库的内部冲突，砍！
+
+
+```
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+        android:width="24dp"
+        android:height="24dp"
+        android:viewportHeight="24.0"
+        android:viewportWidth="24.0">
+    <path
+        android:fillColor="?icon_color"
+        android:pathData="M3,18h18v-2H3v2zm0,-5h18v-2H3v2zm0,-7v2h18V6H3z"/>
+</vector>
+```
+
+#### CommonData
+
+数据模型共享库。
+
+- 你用greendao，这个库就直接依赖greendao，生成的数据模型类统一管理
+- 你用bmob（一个云数据库saas），这个库就直接依赖它
+- 你用Room，这个库就直接依赖Room
+- ...
+
+就是数据模型相关的，都在这里定义。
+
+优点：组件间共享数据方便
+缺点：一个组件依赖了这个库，但它只想用其中一个数据库，于是它被迫编译其他数据，造成编译过慢。
+
+推荐做法：CommonData还是要有的，但是不能浪，只能放多个组件共享的数据模型，比如用户模型，既用于登录组件，也用于账户组件，还用于活动组件。如果是只有一个组件使用这个数据库，那请在组件内定义和使用这个数据库，不要下沉到 CommonData。
+
+#### CommonBase
+
+Base 库，要求极致的复用。含
+- java : `BaseFragment.java`，`BaseActivity.java`，`BasePresenter.java`等等
+- kotlin : extention（也可以`BaseFragment.kt`，`BaseActivity.kt`，`BasePresenter.kt`等等）
+- res > layout : `base_toolbar.xml`，`base_progressbar.xml`等等
+
+这里我提倡“过度封装”，越多Base对以后效率提升越多。在我的项目中
+
+```
+base_rv.xml
+base_rv_stateful.xml
+base_rv_stateful_trans.xml
+base_refresh_rv.xml
+base_refresh_rv_stateful.xml
+base_refresh_rv_stateful_trans.xml
+base_toolbar_refresh_rv.xml
+base_toolbar_refresh_rv_stateful.xml
+base_toolbar_refresh_rv_stateful_trans.xml
+
+BaseFragment.java
+BaseSupportFragment.java
+BaseAdapterSupportFragment.java
+BaseRefreshAdapterSupportFragment.java
+BaseToolBarFragment.java
+BaseToolBarRefreshAdapterSupportFragment.java
+BaseToolbarAdapterSupportFragment.java
+BaseToolbarSupportFragment.java
+```
+
+#### CommonSDK
+
+自己的SDK和第三方SDK。含
+- ArmsMVP（rx系列，retrofit系列等代码风格级的库）
+- bugly
+- xxUtils.kt
+- log日志工具
+- toast等提示工具
+- 打点上报工具
+- SharePreference，MMKV等key-value存储工具
+- RouterHub（ARouter的路由表）
+
+注意：
+
+- 第三方库提供了单例，可以直接调用时，**一定不要直接用**。
+以 ARouter 为例。ARouter提供了 `ARouter.getInstance()...`的用法，请不要偷懒，要自己再包一层：
+```java
+public class NAV {
+    public static void go(String path) {
+        ARouter.getInstance().build(path).navigation();
+    }
+
+    public static void go(String path, Bundle bundle) {
+        ARouter.getInstance().build(path).with(bundle).navigation();
+    }
+
+    public static void go(String path, int resultCode) {
+        ARouter.getInstance().build(path).withFlags(resultCode).navigation();
+    }
+
+    public static void go(String path, Bundle bundle, int resultCode) {
+        ARouter.getInstance().build(path).with(bundle).withFlags(resultCode).navigation();
+    }
+
+    public static void go(Context context, String path) {
+        ARouter.getInstance().build(path).navigation(context);
+    }
+
+    public static void go(Context context, String path, Bundle bundle) {
+        ARouter.getInstance().build(path).with(bundle).navigation(context);
+    }
+
+    public static void go(Context context, String path, int resultCode) {
+        ARouter.getInstance().build(path).withFlags(resultCode).navigation(context);
+    }
+
+    public static void go(Context context, String path, Bundle bundle, int resultCode) {
+        ARouter.getInstance().build(path).with(bundle).withFlags(resultCode).navigation(context);
+    }
+
+    public static void go(Context context, String path, int enterAnim, int exitAnim) {
+        ARouter.getInstance().build(path)
+                .withTransition(enterAnim, exitAnim).navigation(context);
+    }
+
+    public static void go(Context context, String path, Bundle bundle, int enterAnim, int exitAnim) {
+        ARouter.getInstance().build(path)
+                .with(bundle)
+                .withTransition(enterAnim, exitAnim).navigation(context);
+    }
+
+    public static void go(Context context, String path, int resultCode, int enterAnim, int exitAnim) {
+        ARouter.getInstance().build(path)
+                .withFlags(resultCode)
+                .withTransition(enterAnim, exitAnim).navigation(context);
+    }
+
+    public static void go(Context context, String path, Bundle bundle, int resultCode, int enterAnim, int exitAnim) {
+        ARouter.getInstance().build(path)
+                .with(bundle).withFlags(resultCode)
+                .withTransition(enterAnim, exitAnim).navigation(context);
+    }
+    ...
+}
+```
+再以 EventBus 为例。EventBus提供了 `EventBus.getDefault()...`的用法，请不要偷懒，要自己再包一层：
+```java
+public class MyEventBus {
+    public static void post(Object obj) {
+        EventBus.getDefault().post(obj);
+    }
+    ...
+}
+```
+类似地可以给 MMKV 等 key-value 库套一层。
+
+为什么要多套一层？
+
+因为以后这些第三方库随时可能会被换掉。比如`EventBus`，如果要换带 tag 的 `AndroidEventBus`，侵入性极大。而用自家定义的 `MyEventBus` ，在调用函数方面影响小一点（但不是没有影响，因为注解之类的还要改，只是让你改的地方少一点）。
+
+
+## 2. 组件创建
 
 创建一个组件，有两个来源。一是拆分而来创建的新组件，二是为新功能创建一个新组件。
 
@@ -152,7 +502,7 @@ PPS：[JessYanCoding 的 `MVPArms 框架`](https://github.com/JessYanCoding/MVPA
 
 
 
-## 2. 组件开发
+## 3. 组件开发
 
 ### 组件调试时独立
 
@@ -199,6 +549,11 @@ if (isPlugin.toBoolean()) {
    - 切换壳的过程不需要 `Gradle Sync`，直接指定哪个壳直接 `Build` 就行
 3. `ButterKnife`。老项目肯定广泛使用了`ButterKnife`，在组件化时，一次修改，永久有效（只需`R`改成`R2`），不像前面切换两个模式时，需要同时切换`R`和`R2`
 4. 维护代价。只用维护库模式的组件。空壳随意维护一下就行，反正没有java或kotlin之类的代码。
+
+坏处：
+
+1. 每个壳都需要磁盘空间来 build，所以这种做法本质上是用空间换取时间。
+2. 暂时没发现其他坏处，有待观察。
 
 ### 多组件调试
 
@@ -554,7 +909,7 @@ PendingIntent pendingIntent2Add = PendingIntent.getActivity(context, <requestCod
 
 
 
-## 3. 组件维护
+## 4. 组件维护
 
 ### 组件混淆
 
@@ -983,16 +1338,18 @@ uploadArchives {
 
 
 
-## 4. 组件发布
+## 5. 组件发布
 
 两种方式
 
-1. 发布为 aar，通过`runtimeOnly rootProject.ext.dependencies["module-book-reader"]`。
-2. 复制粘贴，通过`runtimeOnly project(':modules:module-book-reader')`
+1. 发布为 aar，要依赖则通过`runtimeOnly rootProject.ext.dependencies["module-book-reader"]`。
+2. 复制粘贴，要依赖则通过`runtimeOnly project(':modules:module-book-reader')`
 
 PS：aar 对编译效率貌似提升不大...并没有显著减少全量编译的时间。有待考究，欢迎补充！
 
-## 5. 组件移除
+注意：有个坑是“打包组件 aar 时连同其依赖也打包进去”，gradle不会自动把依赖打包进去。但是不建议把依赖一起打包，因为可能导致 already present 错误。建议保持基础层提供的 api 相对稳定即可。
+
+## 6. 组件移除
 
 ！！！不建议在壳内移除组件。
 
@@ -1013,412 +1370,6 @@ PS：aar 对编译效率貌似提升不大...并没有显著减少全量编译�
 > 还记得 `runtimeOnly` 吗？不合群依赖，编译时不参与，但运行时能用。也就是说，编译时就算是 app 壳，也无法访问组件内的任意一个类。对壳来说，`runtimeOnly`的组件形如虚设。
 
 可能你会移除掉 `android.intent.category.LAUNCHER` 的 Activity 对应的组件...这是启动 Activity，换一个即可。
-
-## 6. 组件划分
-
-组件化和模块化相比，组件化更加细粒度，但是一定要把握组件划分的度，不能太细，也不能太粗。
-
-划分太细会导致组件过多，维护困难（当然，人手多的话，实行`维护者组件责任制`可以完美解决，所以我们优先选择细粒度划分）
-
-划分太粗会导致编译过慢，组件化形如虚设。
-
-### 架构
-
-分三层：宿主壳和调试壳，组件层，基础层。各层间依赖关系：
-- 宿主壳、调试壳以 runtimeOnly 依赖所有组件，不得依赖基础层。
-- 组件层间不得相互依赖。组件层按需依赖基础层的各种库。所有组件对基础层的依赖都是按需依赖，必要时可以不依赖基础层。
-- 基础层间不得相互依赖。基础层的 module 对于第三方依赖，最多可以使用 api 长依赖于第三方，不要用 implementation 的短依赖。（当然，自己写的 module 以及一些特殊组件甚至可以什么都不依赖）
-
-时光猫部分架构如图：
-
-![](model.png)
-
-各层包含的内容如下。
-
-#### 宿主壳、调试壳
-
-不能有一点儿 java 代码，仅在 `build.gradle` 里添加对各个组件的依赖，`AndroidManifest.xml`里声明权限，入口，变量，汇总 Activity。
-
-宿主壳和调试壳本质是一样的，宿主壳等价于同时调试所有组件的调试壳。
-
-#### 组件层
-
-每个组件都应该是可独立运行的。这意味着组件内可以声明新的数据结构和创建对应的数据表和数据库。
-
-没有必要把 model 下沉到基础层。如果需要共用同一个 model，那要么划分组件就不合理，要么通过 ARouter 从别的组件获取 fragment 的方式解决。
-
-如果实在要把 model 下沉到基础层，方便组件共享数据模型，那么必须新建一个库放在基础层（命名为 CommonData）不允许放 CommonSDK 里，因为要保证基础层的库都服从单一职责。
-
-#### 基础层
-
-尽量不要下沉代码到基础层！
-尽量不要下沉代码到基础层！
-尽量不要下沉代码到基础层！
-
-基础层的设定就是为了让组件放心地依赖基础层，放心地复用基础层的代码，以达到高效开发的目的。
-所以，不要让基础层成为你的代码垃圾桶。对基础层的要求有两个，对内和对外。
-对外，命名要秒懂。这样在写组件的业务代码的时候，多想一下基础层里的代码，复用比造轮子更重要。
-对内，要分类清晰。不要让某个基础层的库里堆积了大量`xxUtils.java`这种垃圾代码。不是说不写，而是说少写，以及分类清晰地写。推荐[AndroidUtilCode](https://github.com/Blankj/AndroidUtilCode)，同时可以学习一下`Util`是怎么分类的。其次，下沉到基础层的代码，其他组件不一定想用，所以在下沉代码之前，先经过 code review。
-
-基础层包括自己的 CommonSDK、自己的 CommonBase、CommonResource、第三方 SDK，第三方 UI，第三方代码级库。
-1. `CommonSDK` 含
-   - 你的 Utils
-   - Events实体
-
-2. `CommonBase` 含
-   - 你的自写 widget
-   - BaseActivity, BaseFragment等
-   - base_layout
-   - res：base_style.xml
-3. `CommonData` 这是基础层特殊库，含
-   - 共享数据库
-   - ARouter路由表
-4. `CommonResource`含
-   - 资源
-5. `第三方 SDK` 指 `科大讯飞 SDK`、`腾讯 bugly SDK`、`Bmob SDK` 等解决方案专业化、需要注册申请才能使用的 SDK。
-   这部分的依赖放在基础层。注意：
-   1. 要根据组件配置动态依赖，减少编译时间。因为不是所有组件都全部用到了所有的 SDK，真实情况是组件用到的只是部分 SDK。
-   2. 对每个第三方 SDK 必须新建一个 module 来包含住这个 SDK。组件按需依赖。
-6. `第三方代码级库` 指`ButterKnife`、`Dagger`、`ARouter`、`Glide`、`rxjava`、`ArmsMVP`等注解、生成代码、定义了一种代码风格的库。
-   这部分的依赖放在 CommonSDK。这意味着每个组件都会依赖所有的 `第三方代码级库`。具体有哪些代码级库在下面列出：
-   - `ButterKnife`：绑定view
-   - `Dagger`：对象注入
-   - `ARouter`：跨组件路由框架
-   - `Glide`：图片加载框架
-   - `rxjava`、`rxAndroid`：异步
-   - `ArmsMVP`：上面的库都在这里集成，且这个库还定义了一套 MVP 规范，有模板支持一键生成 ArmsMVP 风格的 MVP，不用手动创建各个文件了。
-7. `第三方 UI` 指 `SmartRefreshLayout`、`QMUI`、`Android-skin-support` 等 UI widget 库。
-   这部分的依赖放在自己的 CommonBase。
-   对比较大的库，优先考虑放在组件内依赖，在下沉到 CommonBase 前要三思，不要让其他组件被动附加不必要的编译时间。
-8. `其他第三方 library`, 按库大小优先考虑放在组件内依赖，尽量不要下沉到基础层。
-
-#### MVC、MVP、MVVM 如何下沉
-
-均最多只能下沉 `M` 到基础层。`MVC` 里的 `V` 和 `C`、`MVP` 里的 `V` 和 `P`、`MVVM`里的 `V` 和 `VM` 均只能放组件层。
-
-为什么？
-
-`M` 是数据层，如果为了组件间共享数据不择手段，那就下沉 `M`。
-注意，不建议所有的 M 都下沉到基础层。有两个原因：
-
-1. M 随便下沉会导致基础层臃肿，其他组件被迫编译，被迫增加时间成本
-2. M 放组件内部更容易维护
-
-`V`、`C`、`P`、`VM` 都是业务，业务应该留在组件内。
-
-时刻记住，只有足够优秀的代码才能下沉到基础层。
-
-### Utils 规范：使用 Kotlin
-
-> 为什么是 Kotlin？因为 Kotlin 方便扩展某一类 util（使用扩展函数）。
-
-强制：必须注释！！！
-
-建议：放在基础层的 CommonSDK 里。（也可以独立成为一个 module，但建议放在 CommonSDK）
-
-#### 静态方法
-
-原来：
-
-```java
-//声明
-final class Utils {
-    public static boolean foo() {
-        return false;
-    }
-}
-//使用
-final boolean test = Utils.foo();
-```
-转化后：
-
-```Kotlin
-//定义
-object Utils {
-    @JvmStatic
-    fun foo(): Boolean = true
-}
-// Kotlin 里使用
-val test = Utils.foo()
-// Java 里使用
-final boolean test = Utils.foo()
-```
-
-#### 单例模式
-
-请使用懒汉式，因为 Utils 在使用时再初始化，防止在没有用到的时候影响性能。
-
-1. 饿汉式
-
-Kotlin 引入了 object 类型，可以很容易声明单例模式。
-
-对象声明就是单例了。`object DataProviderManager`就可以理解为创建了类`DataProviderManager`并且实现了单例模式。
-
-```
-object Singleton {
-    ...
-}
-
-// Kotlin 中调用
-Singleton.xx()
-
-// Java 中调用
-Singleton.INSTANCE.xx()
-```
-这种方式和 Java 单例模式的饿汉式一样，不过比 Java 中的实现代码量少很多，其实是个语法糖。反编译生成的 class 文件后如下：
-```
-public final class Singleton {
-    public static final Singleton INSTANCE = null;
-
-    static {
-        Singleton singleton = new Singleton();
-    }
-
-    private Singleton() {
-        INSTANCE = this;
-    }
-}
-```
-
-2. 懒汉式
-
-前面的 object 的实现方式是饿汉式的，开始使用前就实例化好了，如何在第一次调用时在初始化呢？Kotlin 中的延迟属性 Lazy 刚好适合这种场景。
-```
-// kotlin 声明
-class Singleton private constructor() {
-    companion object {
-        val instance: Singleton by lazy { Singleton() }
-    }
-}
-
-// Kotlin 中调用
-Singleton.instance.xx()
-
-// Java 中调用
-Singleton.Companion.getInstance().xx()
-```
-
-### res 规范：命名清晰
-
-全部：
-  - 使用插件 [Android File Grouping Plugin](https://github.com/dmytrodanylyk/folding-plugin)
-    它可以在不改变文件目录结构的情况下，将文件按名称进行分组。
-    - 分组规则，按名称中的下划线”_”作为分隔符，将下划线前面的做作为一组
-    - 分组不会移动文件
-    - 分组也不会实际创建目录
-  -
-组件内的 res：
-  - resourcePrefix "组件名_" //给 Module 内的资源名增加前缀, 避免资源名冲突
-  -
-基础层内的 res：
-  - resourcePrefix "base_" //组件也想用`base_`的话，可以用`组件名_base_`
-
-下面对组件范围内的 res 进行规范
-
-#### string.xml
-
-string分类
-
-- 标记型`string_short.xml`：如`comfirm`，`cancel`，`ok`，`delete`，`app_name`等短小精悍的string
-- 长篇大论帮助文档型`string_long.xml`：如 faq
-- 格式化型`string_format.xml`：如`全国排名第 %d 名`
-- 字符串数组`array_string.xml`
-- 区分单复数的数量字符串Quantity Strings (Plurals)
-- 魔法字符串`string_important.xml`：如[这哥们把女神名字当base signal](https://github.com/ywwynm/EverythingDone/blob/master/app/src/main/res/values/strings.xml#L6)，混进用户编辑的文字里存数据库了，不能翻译，不要乱动。动就是两开花。
-
-注意：
-0. 项目不大，建议先别翻译
-1. 展示给用户的才翻译，其余不要翻译
-2. 组件中的 string 资源下沉到基础层，如果暂时不想分类放好，可以新建个`string_<组件名>.xml`。但是不推荐这么做，因为迟早要变垃圾桶。
-
-以上欢迎补充。
-
-### asset
-
-那个组件用到就放哪个组件的 `asset/<组件名>` 文件夹里避免冲突，不要集中下沉到基础层（除非是基础层自己的 asset）。
-
-apk 编译时会自动 merge。
-
-
-### 特殊组件
-
-由规范 5（只依赖部分组件）和规范 6（组件隔离、代码隔离）知，不能随便把代码下沉到基础层。
-
-但是组件间的共享是硬需求，每次下沉前都要考虑一番不符合敏捷开发的原则。
-
-有没有一个解决方案，可以不用带脑子就直接下沉，实现共享呢？
-
-一个简单易操作的方法是定义特殊组件，只要符合特殊组件要求的，就可以直接下沉。
-
-#### CommonResource
-
-CommonResource 包含且仅包含以下类型的资源
-
-- `drawable-xxx`, `mipmap-xxx`
-- `color`
-- `anim`
-- `integer`, `bool`
-- `raw`, `asset`：打包时不会压缩这里的文件，也不会校验是否完整，也就是说会 100% 打包进 APK 里。
-- `string`
-
-注意：
-
-- 上面其实只有一句话：除了`attr.xml`即`<declare-styleable.../>`外所有资源。
-  因为`<declare-styleable.../>`是与widget和style绑定的，所以在定义widget的组件里放`<declare-styleable.../>`，在CommonResource里放style级的`<declare-styleable.../>`。
-- 在矢量图里使用了主题颜色的，考虑好style要一起随之下沉。例如下面的 `android:fillColor="?icon_color"` 其中`?icon_color`是在主题里定义的。
-  这里需要带点脑子...
-  可能会抛错`Drawable com.time.cat:drawable/ic_notes has unresolved theme attributes! Consider using Resources.getDrawable(int, Theme) or Context.getDrawable(int).`
-  解决：`https://stackoverflow.com/questions/9469174/set-theme-for-a-fragment`最后发现是[Android-skin-support](https://github.com/ximsfei/Android-skin-support)这个库的内部冲突，砍！
-
-
-```
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-        android:width="24dp"
-        android:height="24dp"
-        android:viewportHeight="24.0"
-        android:viewportWidth="24.0">
-    <path
-        android:fillColor="?icon_color"
-        android:pathData="M3,18h18v-2H3v2zm0,-5h18v-2H3v2zm0,-7v2h18V6H3z"/>
-</vector>
-```
-
-#### CommonData
-
-数据模型共享库。
-
-- 你用greendao，这个库就直接依赖greendao，生成的数据模型类统一管理
-- 你用bmob（一个云数据库saas），这个库就直接依赖它
-- 你用Room，这个库就直接依赖Room
-- ...
-
-就是数据模型相关的，都在这里定义。
-
-优点：组件间共享数据方便
-缺点：一个组件依赖了这个库，但它只想用其中一个数据库，于是它被迫编译其他数据，造成编译过慢。
-
-推荐做法：CommonData还是要有的，但是不能浪，只能放多个组件共享的数据模型，比如用户模型，既用于登录组件，也用于账户组件，还用于活动组件。如果是只有一个组件使用这个数据库，那请在组件内定义和使用这个数据库，不要下沉到 CommonData。
-
-#### CommonBase
-
-Base 库，要求极致的复用。含
-- java : `BaseFragment.java`，`BaseActivity.java`，`BasePresenter.java`等等
-- kotlin : extention（也可以`BaseFragment.kt`，`BaseActivity.kt`，`BasePresenter.kt`等等）
-- res > layout : `base_toolbar.xml`，`base_progressbar.xml`等等
-
-这里我提倡“过度封装”，越多Base对以后效率提升越多。在我的项目中
-
-```
-base_rv.xml
-base_rv_stateful.xml
-base_rv_stateful_trans.xml
-base_refresh_rv.xml
-base_refresh_rv_stateful.xml
-base_refresh_rv_stateful_trans.xml
-base_toolbar_refresh_rv.xml
-base_toolbar_refresh_rv_stateful.xml
-base_toolbar_refresh_rv_stateful_trans.xml
-
-BaseFragment.java
-BaseSupportFragment.java
-BaseAdapterSupportFragment.java
-BaseRefreshAdapterSupportFragment.java
-BaseToolBarFragment.java
-BaseToolBarRefreshAdapterSupportFragment.java
-BaseToolbarAdapterSupportFragment.java
-BaseToolbarSupportFragment.java
-```
-
-#### CommonSDK
-
-自己的SDK和第三方SDK。含
-- ArmsMVP（rx系列，retrofit系列等代码风格级的库）
-- bugly
-- xxUtils.kt
-- log日志工具
-- toast等提示工具
-- 打点上报工具
-- SharePreference，MMKV等key-value存储工具
-- RouterHub（ARouter的路由表）
-
-注意：
-
-- 第三方库提供了单例，可以直接调用时，**一定不要直接用**。
-以 ARouter 为例。ARouter提供了 `ARouter.getInstance()...`的用法，请不要偷懒，要自己再包一层：
-```java
-public class NAV {
-    public static void go(String path) {
-        ARouter.getInstance().build(path).navigation();
-    }
-
-    public static void go(String path, Bundle bundle) {
-        ARouter.getInstance().build(path).with(bundle).navigation();
-    }
-
-    public static void go(String path, int resultCode) {
-        ARouter.getInstance().build(path).withFlags(resultCode).navigation();
-    }
-
-    public static void go(String path, Bundle bundle, int resultCode) {
-        ARouter.getInstance().build(path).with(bundle).withFlags(resultCode).navigation();
-    }
-
-    public static void go(Context context, String path) {
-        ARouter.getInstance().build(path).navigation(context);
-    }
-
-    public static void go(Context context, String path, Bundle bundle) {
-        ARouter.getInstance().build(path).with(bundle).navigation(context);
-    }
-
-    public static void go(Context context, String path, int resultCode) {
-        ARouter.getInstance().build(path).withFlags(resultCode).navigation(context);
-    }
-
-    public static void go(Context context, String path, Bundle bundle, int resultCode) {
-        ARouter.getInstance().build(path).with(bundle).withFlags(resultCode).navigation(context);
-    }
-
-    public static void go(Context context, String path, int enterAnim, int exitAnim) {
-        ARouter.getInstance().build(path)
-                .withTransition(enterAnim, exitAnim).navigation(context);
-    }
-
-    public static void go(Context context, String path, Bundle bundle, int enterAnim, int exitAnim) {
-        ARouter.getInstance().build(path)
-                .with(bundle)
-                .withTransition(enterAnim, exitAnim).navigation(context);
-    }
-
-    public static void go(Context context, String path, int resultCode, int enterAnim, int exitAnim) {
-        ARouter.getInstance().build(path)
-                .withFlags(resultCode)
-                .withTransition(enterAnim, exitAnim).navigation(context);
-    }
-
-    public static void go(Context context, String path, Bundle bundle, int resultCode, int enterAnim, int exitAnim) {
-        ARouter.getInstance().build(path)
-                .with(bundle).withFlags(resultCode)
-                .withTransition(enterAnim, exitAnim).navigation(context);
-    }
-    ...
-}
-```
-再以 EventBus 为例。EventBus提供了 `EventBus.getDefault()...`的用法，请不要偷懒，要自己再包一层：
-```java
-public class MyEventBus {
-    public static void post(Object obj) {
-        EventBus.getDefault().post(obj);
-    }
-    ...
-}
-```
-类似地可以给 MMKV 等 key-value 库套一层。
-
-为什么要多套一层？
-
-因为以后这些第三方库随时可能会被换掉。比如`EventBus`，如果要换带 tag 的 `AndroidEventBus`，侵入性极大。而用自家定义的 `MyEventBus` ，在调用函数方面影响小一点（但不是没有影响，因为注解之类的还要改，只是让你改的地方少一点）。
-
 
 ## 写在后面
 
