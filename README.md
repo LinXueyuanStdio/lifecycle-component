@@ -59,7 +59,7 @@
    
 ## 写在前面
 
-[demo 有空会在 github 上更新，欢迎关注](https://github.com/LinXueyuanStdio/lifecycle-component)。
+[demo 有空会在 github 上更新，欢迎关注](https://github.com/LinXueyuanStdio/lifecycle-component)。demo 怎么做：一条commit对应一条规范。所以不会很快，可以先 `star` 收藏以便查阅。
 
 > 本文是在我重构[个人项目时光猫（欢迎体验）](https://www.coolapk.com/apk/182751)的时候，边组件化边记录下来的。期中踩了很多坑，也不断思考优雅的解决方案。因为是个人项目，所以可以随便浪，可以毫无保留地公布细节，应该还是有指导意义的。
 
