@@ -1,4 +1,5 @@
 include ':app'
+include ':fake:fake-zhihu'
 include ':component:CommonSDK',
         ':component:CommonService',
         ':component:CommonRes'
