@@ -1,1 +1,7 @@
-include ':app', ':CommonSDK', ':CommonService', ':CommonRes', ':module_zhihu', ':module_gank', 'module_gold'
+include ':app'
+include ':component:CommonSDK',
+        ':component:CommonService',
+        ':component:CommonRes'
+include ':module:module_zhihu',
+        ':module:module_gank',
+        ':module:module_gold'
