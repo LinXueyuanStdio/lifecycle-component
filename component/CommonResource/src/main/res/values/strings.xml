@@ -5,4 +5,9 @@
     <string name="public_name_zhihu">知乎日报</string>
     <string name="public_name_gank">干货集中营</string>
     <string name="public_name_gold">稀土掘金</string>
+
+    <string name="module_name">app</string>
+    <string name="gold_module_name">ModuleGold</string>
+    <string name="zhihu_module_name">ModuleZhihu</string>
+    <string name="gank_module_name">ModuleGank</string>
 </resources>

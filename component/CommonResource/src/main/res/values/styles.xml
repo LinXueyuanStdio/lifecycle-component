@@ -1,6 +1,11 @@
 <resources>
+    <style name="SplashTheme" parent="public_AppTheme">
+        <item name="android:windowBackground">@drawable/layer_splash_bg</item>
+        <item name="colorPrimaryDark">@android:color/black</item>
+        <item name="android:windowIsTranslucent">false</item>
+    </style>
 
-    <!-- Base application theme. -->
+    <!--region Base application theme. -->
     <style name="public_AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="colorPrimary">@color/public_colorPrimary</item>
@@ -35,4 +40,5 @@
         <!--是否模糊-->
         <item name="android:backgroundDimEnabled">true</item>
     </style>
+    <!--endregion-->
 </resources>

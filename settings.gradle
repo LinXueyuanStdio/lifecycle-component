@@ -2,6 +2,7 @@ include ':app'
 include ':fake:fake-zhihu'
 include ':component:CommonSDK',
         ':component:CommonService',
+        ':component:CommonResource',
         ':component:CommonRes'
 include ':module:module_zhihu',
         ':module:module_gank',

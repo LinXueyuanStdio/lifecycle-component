@@ -73,6 +73,7 @@ dependencies {
 
     implementation project(":component:CommonRes")//因为 CommonRes 依赖了 CommonSDK, 所以如果业务模块需要公共 UI 组件就依赖 CommonRes, 如果不需要就只依赖 CommonSDK
     implementation project(":component:CommonService")
+    implementation project(":component:CommonResource")
 
     //test
     testImplementation rootProject.ext.dependencies["junit"]
