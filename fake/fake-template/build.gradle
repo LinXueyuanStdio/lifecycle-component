@@ -1,0 +1,83 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion rootProject.ext.android["compileSdkVersion"]
+    buildToolsVersion rootProject.ext.android["buildToolsVersion"]
+    defaultConfig {
+        minSdkVersion rootProject.ext.android["minSdkVersion"]
+        targetSdkVersion rootProject.ext.android["targetSdkVersion"]
+        versionCode rootProject.ext.android["versionCode"]
+        versionName rootProject.ext.android["versionName"]
+        testInstrumentationRunner rootProject.ext.dependencies["androidJUnitRunner"]
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = [AROUTER_MODULE_NAME: project.getName()]
+            }
+        }
+    }
+    buildTypes {
+        debug {
+            buildConfigField "boolean", "LOG_DEBUG", "true"
+            buildConfigField "boolean", "USE_CANARY", "true"
+            buildConfigField "boolean", "IS_BUILD_MODULE", "${isBuildModule}"
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+
+        release {
+            buildConfigField "boolean", "LOG_DEBUG", "false"
+            buildConfigField "boolean", "USE_CANARY", "false"
+            buildConfigField "boolean", "IS_BUILD_MODULE", "${isBuildModule}"
+            minifyEnabled true
+            shrinkResources true
+            zipAlignEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    useLibrary 'org.apache.http.legacy'
+    compileOptions {
+        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_1_8
+    }
+    dexOptions {
+        //预编译
+        preDexLibraries true
+        //支持大工程
+        jumboMode = true
+        //线程数
+        threadCount = 16
+        //dex内存，公式：dex内存 + 1G < Gradle内存
+        javaMaxHeapSize "4g"
+        additionalParameters = [
+                '--multi-dex',//多分包
+                '--set-max-idx-number=60000'//每个包内方法数上限
+        ]
+    }
+    lintOptions {
+        checkReleaseBuilds false
+        disable 'InvalidPackage'
+        disable "ResourceType"
+        // Or, if you prefer, you can continue to check for errors in release builds,
+        // but continue the build even when errors are found:
+        abortOnError false
+    }
+    sourceSets {
+        main {
+            manifest.srcFile './AndroidManifest.xml'
+        }
+    }
+}
+
+dependencies {
+    //TODO 4. 修改要调试的组件
+    runtimeOnly project(':module:module_zhihu')
+
+    implementation project(":component:CommonRes")//因为 CommonRes 依赖了 CommonSDK, 所以如果业务模块需要公共 UI 组件就依赖 CommonRes, 如果不需要就只依赖 CommonSDK
+    implementation project(":component:CommonService")
+
+    //test
+    testImplementation rootProject.ext.dependencies["junit"]
+    debugImplementation rootProject.ext.dependencies["canary-debug"]
+    releaseImplementation rootProject.ext.dependencies["canary-release"]
+    testImplementation rootProject.ext.dependencies["canary-release"]
+}
