@@ -1,9 +1,11 @@
 include ':app'
-include ':fake:fake-zhihu'
+include ':fake:fake-zhihu',
+        ':fake:fake-app'
 include ':component:CommonSDK',
         ':component:CommonService',
         ':component:CommonResource',
         ':component:CommonRes'
-include ':module:module_zhihu',
+include ':module:module_app',
+        ':module:module_zhihu',
         ':module:module_gank',
         ':module:module_gold'

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="me.jessyan.armscomponent.app">
+          package="com.lifecycle.app">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -19,7 +19,7 @@
         android:supportsRtl="true"
         android:theme="@style/public_AppTheme">
         <activity
-            android:name=".mvp.ui.activity.SplashActivity"
+            android:name="me.jessyan.armscomponent.app.mvp.ui.activity.SplashActivity"
             android:configChanges="orientation|screenSize"
             android:screenOrientation="portrait"
             android:theme="@style/SplashTheme"
@@ -29,11 +29,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <activity
-            android:name=".mvp.ui.activity.MainActivity"
-            android:configChanges="orientation|screenSize"
-            android:screenOrientation="portrait"
-            />
 
         <!-- 只要依赖 AutoSize 就必须填写设计图尺寸, 否则报错, 不想使用 AutoSize 就不要依赖 AutoSize
         只要填写完设计图的尺寸, AutoSize 就会自动启动, 以下 dp 尺寸是根据公式 px / (dpi / 160) 求出, 运算时使用测试机的 dpi 即可
@@ -55,6 +50,15 @@
             android:value="ConfigModule"/>
         <meta-data
             android:name="me.jessyan.armscomponent.app.app.GlobalConfiguration"
+            android:value="ConfigModule"/>
+        <meta-data
+            android:name="me.jessyan.armscomponent.gank.app.GlobalConfiguration"
+            android:value="ConfigModule"/>
+        <meta-data
+            android:name="me.jessyan.armscomponent.zhihu.app.GlobalConfiguration"
+            android:value="ConfigModule"/>
+        <meta-data
+            android:name="me.jessyan.armscomponent.gold.app.GlobalConfiguration"
             android:value="ConfigModule"/>
 
     </application>

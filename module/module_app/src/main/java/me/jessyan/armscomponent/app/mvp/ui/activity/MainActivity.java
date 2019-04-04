@@ -31,6 +31,7 @@ import com.jess.arms.utils.ArmsUtils;
 import butterknife.BindView;
 import butterknife.OnClick;
 import me.jessyan.armscomponent.app.R;
+import me.jessyan.armscomponent.app.R2;
 import me.jessyan.armscomponent.commonsdk.core.RouterHub;
 import me.jessyan.armscomponent.commonsdk.utils.Utils;
 import me.jessyan.armscomponent.commonservice.gank.service.GankInfoService;
@@ -49,11 +50,11 @@ import me.jessyan.armscomponent.commonservice.zhihu.service.ZhihuInfoService;
  */
 @Route(path = RouterHub.APP_MAINACTIVITY)
 public class MainActivity extends BaseActivity {
-    @BindView(R.id.bt_zhihu)
+    @BindView(R2.id.bt_zhihu)
     Button mZhihuButton;
-    @BindView(R.id.bt_gank)
+    @BindView(R2.id.bt_gank)
     Button mGankButton;
-    @BindView(R.id.bt_gold)
+    @BindView(R2.id.bt_gold)
     Button mGoldButton;
 
     @Autowired(name = RouterHub.ZHIHU_SERVICE_ZHIHUINFOSERVICE)
@@ -72,7 +73,7 @@ public class MainActivity extends BaseActivity {
 
     @Override
     public int initView(@Nullable Bundle savedInstanceState) {
-        return R.layout.activity_main;
+        return R.layout.app_activity_main;
     }
 
     @Override
@@ -142,18 +143,18 @@ public class MainActivity extends BaseActivity {
      *
      * @param view
      */
-    @OnClick({R.id.bt_zhihu, R.id.bt_gank, R.id.bt_gold})
+    @OnClick({R2.id.bt_zhihu, R2.id.bt_gank, R2.id.bt_gold})
     public void onClick(View view) {
-        switch (view.getId()) {
-            case R.id.bt_zhihu:
-                Utils.navigation(MainActivity.this, RouterHub.ZHIHU_HOMEACTIVITY);
-                break;
-            case R.id.bt_gank:
-                Utils.navigation(MainActivity.this, RouterHub.GANK_HOMEACTIVITY);
-                break;
-            case R.id.bt_gold:
-                Utils.navigation(MainActivity.this, RouterHub.GOLD_HOMEACTIVITY);
-                break;
+        int i = view.getId();
+        if (i == R.id.bt_zhihu) {
+            Utils.navigation(MainActivity.this, RouterHub.ZHIHU_HOMEACTIVITY);
+
+        } else if (i == R.id.bt_gank) {
+            Utils.navigation(MainActivity.this, RouterHub.GANK_HOMEACTIVITY);
+
+        } else if (i == R.id.bt_gold) {
+            Utils.navigation(MainActivity.this, RouterHub.GOLD_HOMEACTIVITY);
+
         }
     }
 }
