@@ -1,0 +1,67 @@
+<resources>
+    <!-- Default screen margins, per the Android Design guidelines. -->
+    <dimen name="public_activity_horizontal_margin">16dp</dimen>
+    <dimen name="public_activity_vertical_margin">16dp</dimen>
+    //字体
+    <dimen name="public_font_11sp">11sp</dimen>
+    <dimen name="public_font_12sp">12sp</dimen>
+    <dimen name="public_font_13sp">13sp</dimen>
+    <dimen name="public_font_14sp">14sp</dimen>
+    <dimen name="public_font_16sp">16sp</dimen>
+    <dimen name="public_font_18sp">18sp</dimen>
+    <dimen name="public_font_20sp">20sp</dimen>
+    <dimen name="public_font_24sp">24sp</dimen>
+    <dimen name="public_font_30sp">30sp</dimen>
+    <dimen name="public_font_32sp">32sp</dimen>
+    <dimen name="public_font_36sp">36sp</dimen>
+    <dimen name="public_font_48sp">48sp</dimen>
+
+    //高
+    <dimen name="public_height_24dp">24dp</dimen>
+    <dimen name="public_height_50dp">50dp</dimen>
+    <dimen name="public_height_54dp">54dp</dimen>
+    <dimen name="public_height_67dp">67dp</dimen>
+    <dimen name="public_height_80dp">80dp</dimen>
+    <dimen name="public_height_174dp">174dp</dimen>
+    <dimen name="public_height_280dp">280dp</dimen>
+
+
+    //宽
+    <dimen name="public_width_24dp">24dp</dimen>
+    <dimen name="public_width_67dp">67dp</dimen>
+    <dimen name="public_width_80dp">80dp</dimen>
+
+    //padding
+    <dimen name="public_padding_20dp">20dp</dimen>
+
+    //paddingLeft
+    <dimen name="public_pad_left_4dp">4dp</dimen>
+
+    //paddingRight
+    <dimen name="public_pad_right_28dp">28dp</dimen>
+
+    //paddingTop
+    <dimen name="public_pad_top_4dp">4dp</dimen>
+
+    //paddingBottom
+    <dimen name="public_pad_bottom_20dp">20dp</dimen>
+
+    //marginTop
+    <dimen name="public_mar_top_3dp">3dp</dimen>
+    <dimen name="public_mar_top_8dp">8dp</dimen>
+
+    //marginLeft
+    <dimen name="public_mar_left_4dp">4dp</dimen>
+    <dimen name="public_mar_left_5dp">5dp</dimen>
+    <dimen name="public_mar_left_6dp">6dp</dimen>
+    <dimen name="public_mar_left_10dp">10dp</dimen>
+
+    //marginRight
+    <dimen name="public_mar_right_4dp">4dp</dimen>
+    <dimen name="public_mar_right_5dp">5dp</dimen>
+    <dimen name="public_mar_right_10dp">10dp</dimen>
+
+    //marginBottom
+    <dimen name="public_mar_bottom_4dp">4dp</dimen>
+    <dimen name="public_mar_bottom_5dp">5dp</dimen>
+</resources>
